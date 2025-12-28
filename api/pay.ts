@@ -1,7 +1,7 @@
 
 /**
  * THE START: Create Payment Link
- * This function talks to the Gateway (Flutterwave or Paystack).
+ * This function talks to the Gateway (Flutterwave).
  * It sends the price and the user ID.
  */
 
@@ -9,8 +9,6 @@ export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).send('Use POST');
 
   const { userId, amount, email } = req.body;
-
-  // Use your Secret Key from Environment Variables
   const SECRET_KEY = process.env.PAYMENT_GATEWAY_SECRET;
 
   try {
@@ -25,9 +23,14 @@ export default async function handler(req: any, res: any) {
         tx_ref: `EMW-L-${Date.now()}`,
         amount: amount,
         currency: 'ZMW', // Zambia Kwacha
-        redirect_url: 'https://your-site.vercel.app/success',
+        // Redirecting specifically back to the domain requested by the user
+        redirect_url: 'https://omega-unity.vercel.app/?status=success',
         customer: { email, name: userId },
-        customizations: { title: "OMEGA // UNITY Access" }
+        customizations: { 
+          title: "OMEGA // UNITY Access",
+          description: "Authorizing Reality Manifestation Session",
+          logo: "https://omega-unity.vercel.app/favicon.ico"
+        }
       }),
     });
 

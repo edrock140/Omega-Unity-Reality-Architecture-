@@ -16,7 +16,8 @@ import {
   Coins,
   Scale,
   UserCheck,
-  CreditCard
+  CreditCard,
+  CheckCircle2
 } from 'lucide-react';
 import { editLogo } from './services/gemini';
 import { calculateMarketPrice, MarketPrice } from './services/pricing';
@@ -27,6 +28,7 @@ const App: React.FC = () => {
   const [userEmail, setUserEmail] = useState('');
   const [marketPrice, setMarketPrice] = useState<MarketPrice | null>(null);
   const [paymentPending, setPaymentPending] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
   
   const [state, setState] = useState<ImageState>({
     original: null,
@@ -44,6 +46,18 @@ const App: React.FC = () => {
   ]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
+
+  // Check for successful payment return from Flutterwave
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('status') === 'success') {
+      setIsUnlocked(true);
+      setSessionActive(true);
+      setUserEmail("VERIFIED_SOVEREIGN");
+      addLog("LEDGER_SETTLED: Sovereignty unlocked via Gateway verification.");
+      addLog("SYSTEM_READY: You may now Manifest Reality.");
+    }
+  }, []);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -64,9 +78,13 @@ const App: React.FC = () => {
   const handleAuditRequest = async () => {
     if (!state.original) return;
     addLog("AUDITING_COMPLEXITY: Assessing market value of your Decree...");
-    const price = await calculateMarketPrice(customPrompt);
-    setMarketPrice(price);
-    addLog(`PRICE_SETTLED: ${price.amount} ${price.currency} (${price.complexity} Complexity)`);
+    try {
+      const price = await calculateMarketPrice(customPrompt);
+      setMarketPrice(price);
+      addLog(`PRICE_SETTLED: ${price.amount} ${price.currency} (${price.complexity} Complexity)`);
+    } catch (e) {
+      addLog("AUDIT_ERROR: Price generation failed. Retrying...");
+    }
   };
 
   const initiatePayment = async () => {
@@ -86,22 +104,28 @@ const App: React.FC = () => {
       });
       const data = await response.json();
       if (data.url) {
+        addLog("REDIRECTION: Routing to Sovereign Payment Portal...");
         window.location.href = data.url; // Redirect to Flutterwave
+      } else {
+        throw new Error("Invalid response from gateway");
       }
     } catch (err) {
-      addLog("GATEWAY_ERROR: Failed to establish link.");
+      addLog("GATEWAY_ERROR: Failed to establish link. Check Vercel logs.");
       setPaymentPending(false);
     }
   };
 
   const handleEdit = async () => {
-    if (!state.original) return;
+    if (!state.original || !isUnlocked) {
+      addLog("ACCESS_DENIED: Manifestation requires settled ledger.");
+      return;
+    }
     setState(prev => ({ ...prev, loading: true, error: null }));
     addLog("MANUFACTURING_CONSEQUENCE: Commencing Reality Shift...");
     
     try {
       const editedUrl = await editLogo(state.original, customPrompt);
-      addLog("SETTLEMENT_COMPLETE: Outcome manufactured.");
+      addLog("SETTLEMENT_COMPLETE: Outcome manufactured successfully.");
       setState(prev => ({ ...prev, edited: editedUrl, loading: false }));
     } catch (err: any) {
       setState(prev => ({ ...prev, loading: false, error: err.message }));
@@ -112,7 +136,7 @@ const App: React.FC = () => {
   if (!sessionActive) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black p-6">
-        <div className="max-w-md w-full glass p-10 border-t-4 border-red-600">
+        <div className="max-w-md w-full glass p-10 border-t-4 border-red-600 shadow-2xl">
           <div className="flex justify-center mb-8">
             <div className="w-20 h-20 bg-red-600 flex items-center justify-center rotate-45 border-4 border-white pure-red-glow">
               <Zap size={40} className="text-white -rotate-45" />
@@ -129,11 +153,11 @@ const App: React.FC = () => {
                 type="email" 
                 value={userEmail}
                 onChange={(e) => setUserEmail(e.target.value)}
-                className="w-full bg-black border border-red-900/50 p-4 text-red-100 mono text-xs outline-none focus:border-red-600"
+                className="w-full bg-black border border-red-900/50 p-4 text-red-100 mono text-xs outline-none focus:border-red-600 transition-all"
                 placeholder="authority@source.com"
               />
             </div>
-            <button className="w-full bg-red-600 py-4 font-black uppercase tracking-widest text-xs hover:bg-red-700 transition-all flex items-center justify-center gap-2">
+            <button className="w-full bg-red-600 py-4 font-black uppercase tracking-widest text-xs hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-2">
               <UserCheck size={18} /> Establish Connection
             </button>
           </form>
@@ -170,6 +194,11 @@ const App: React.FC = () => {
           <div className="px-5 py-2 border border-red-600/20 bg-red-600/5 text-red-500 font-bold tracking-widest flex items-center gap-2">
             <Coins size={14} /> {marketPrice ? `${marketPrice.amount} ${marketPrice.currency}` : 'AUDIT PENDING'}
           </div>
+          {isUnlocked && (
+            <div className="px-5 py-2 bg-green-900/20 border border-green-600 text-green-500 font-black tracking-widest flex items-center gap-2 animate-pulse">
+              <CheckCircle2 size={14} /> SOVEREIGN_UNLOCKED
+            </div>
+          )}
         </div>
       </header>
 
@@ -182,7 +211,7 @@ const App: React.FC = () => {
             </div>
             <div 
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-red-900/30 bg-black p-8 text-center cursor-pointer hover:border-red-600 transition-all group"
+              className="border-2 border-dashed border-red-900/30 bg-black p-8 text-center cursor-pointer hover:border-red-600 transition-all group relative overflow-hidden"
             >
               <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -196,7 +225,7 @@ const App: React.FC = () => {
                 }
               }} />
               <FileCode size={40} className="text-red-900 mx-auto mb-3" />
-              <p className="text-[10px] mono text-red-800 font-bold">COMMIT_SOURCE</p>
+              <p className="text-[10px] mono text-red-800 font-bold uppercase">Commit Reality Substrate</p>
             </div>
           </section>
 
@@ -208,7 +237,7 @@ const App: React.FC = () => {
             <textarea
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
-              className="w-full h-24 p-4 text-[11px] mono bg-black border border-red-900/50 text-red-100 uppercase"
+              className="w-full h-24 p-4 text-[11px] mono bg-black border border-red-900/50 text-red-100 uppercase resize-none outline-none focus:border-red-600 transition-all"
               placeholder="ENTER DECREE..."
             />
             
@@ -216,12 +245,12 @@ const App: React.FC = () => {
               <button
                 onClick={handleAuditRequest}
                 disabled={!state.original}
-                className="w-full mt-4 py-4 bg-black border border-red-600 text-red-600 font-bold text-[10px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all"
+                className="w-full mt-4 py-4 bg-black border border-red-600 text-red-600 font-bold text-[10px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 Audit Request Complexity
               </button>
-            ) : (
-              <div className="mt-4 p-4 bg-red-600/10 border border-red-600 animate-in fade-in">
+            ) : !isUnlocked ? (
+              <div className="mt-4 p-4 bg-red-600/10 border border-red-600 animate-in fade-in slide-in-from-top-2">
                 <div className="flex justify-between items-center mb-4">
                   <span className="text-[10px] mono text-red-500 font-black">AUDIT_RESULT:</span>
                   <span className="text-xl font-black text-red-100">{marketPrice.amount} {marketPrice.currency}</span>
@@ -229,33 +258,38 @@ const App: React.FC = () => {
                 <button
                   onClick={initiatePayment}
                   disabled={paymentPending}
-                  className="w-full py-4 bg-red-600 text-white font-black text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-red-600 text-white font-black text-[10px] uppercase tracking-[0.3em] flex items-center justify-center gap-2 hover:bg-red-700 active:scale-95 transition-all"
                 >
                   <CreditCard size={16} /> {paymentPending ? 'CONNECTING...' : 'PAY TO MANUFACTURE'}
                 </button>
               </div>
+            ) : (
+              <div className="mt-4 p-4 bg-green-900/10 border border-green-600 text-green-500 text-center font-black text-[10px] uppercase tracking-widest">
+                Ledger Settled
+              </div>
             )}
           </section>
 
-          {/* Tier 3: Reality Manufacture (Only visible if bypass or mock success) */}
-          <section className="glass p-6 rounded-none border-l-4 border-red-600 opacity-50 hover:opacity-100 transition-opacity">
+          {/* Tier 3: Reality Manufacture */}
+          <section className={`glass p-6 rounded-none border-l-4 border-red-600 transition-all ${!isUnlocked ? 'opacity-30 grayscale' : 'opacity-100'}`}>
             <div className="flex items-center gap-2 mb-5 text-red-500 font-black uppercase text-xs tracking-[0.2em]">
               <Scale size={18} /> 3. Manifestation
             </div>
             <button
               onClick={handleEdit}
-              disabled={!state.original || state.loading}
-              className="w-full py-5 bg-red-950 text-red-600 font-black uppercase tracking-widest border border-red-900"
+              disabled={!state.original || state.loading || !isUnlocked}
+              className="w-full py-5 bg-red-950 text-red-600 font-black uppercase tracking-[0.4em] border border-red-900 hover:bg-red-600 hover:text-white disabled:cursor-not-allowed transition-all"
             >
               {state.loading ? 'SHIFTING...' : 'FORCE REALITY'}
             </button>
           </section>
 
           {/* Logs */}
-          <section className="glass p-5 rounded-none border-l-4 border-red-600 flex-grow max-h-[200px] overflow-hidden flex flex-col">
-            <div className="bg-black p-4 flex-grow overflow-y-auto">
+          <section className="glass p-5 rounded-none border-l-4 border-red-600 flex-grow max-h-[250px] overflow-hidden flex flex-col mt-auto shadow-inner">
+             <div className="text-[9px] mono text-red-500 font-bold mb-2 flex items-center gap-2"><Terminal size={12} /> CONSOLE_OUTPUT</div>
+            <div className="bg-black p-4 flex-grow overflow-y-auto border border-red-900/20">
               {logs.map((log, i) => (
-                <div key={i} className="text-[10px] mono mb-1 text-red-800">
+                <div key={i} className="text-[10px] mono mb-1 text-red-800 animate-in fade-in slide-in-from-left-1">
                   <span className="text-red-600 mr-2 italic">»</span> {log}
                 </div>
               ))}
@@ -265,28 +299,55 @@ const App: React.FC = () => {
         </aside>
 
         <main className="xl:col-span-9 grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="glass p-8 flex items-center justify-center relative min-h-[500px]">
+          <div className="glass p-8 flex items-center justify-center relative min-h-[600px] border-red-900/20 group">
             <div className="scanline"></div>
-            {state.original ? <img src={state.original} className="max-h-full object-contain z-10" /> : <Eye size={80} className="opacity-10" />}
+            <div className="absolute top-4 left-4 text-[9px] mono text-red-900 font-bold">SOURCE_SUBSTRATE</div>
+            {state.original ? (
+              <img src={state.original} className="max-h-full object-contain z-10 shadow-2xl border border-white/5" />
+            ) : (
+              <div className="flex flex-col items-center gap-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Eye size={120} />
+                <span className="mono text-xs uppercase font-black">Waiting for input</span>
+              </div>
+            )}
           </div>
-          <div className="glass p-8 flex items-center justify-center relative min-h-[500px] border-red-600/30">
+          <div className="glass p-8 flex items-center justify-center relative min-h-[600px] border-red-600/30 group">
             <div className="scanline"></div>
+            <div className="absolute top-4 left-4 text-[9px] mono text-red-500 font-bold">OUTCOME_MANIFOLD</div>
             {state.loading ? (
-              <div className="text-center animate-pulse">
-                <Zap size={60} className="text-red-600 mx-auto mb-4" />
-                <p className="mono text-xs uppercase font-black">Settling Ledger...</p>
+              <div className="text-center animate-pulse z-10">
+                <Zap size={80} className="text-red-600 mx-auto mb-6 pure-red-glow" />
+                <p className="mono text-sm uppercase font-black tracking-widest">Settling Reality Ledger...</p>
+                <div className="w-48 h-1 bg-red-900/30 mx-auto mt-6 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-red-600 animate-[loading_2s_ease-in-out_infinite]"></div>
+                </div>
               </div>
             ) : state.edited ? (
-              <img src={state.edited} className="max-h-full object-contain z-10 animate-in zoom-in" />
-            ) : <Lock size={80} className="opacity-10" />}
+              <img src={state.edited} className="max-h-full object-contain z-10 animate-in zoom-in-95 duration-700 shadow-2xl border border-red-600/20" />
+            ) : (
+              <div className="flex flex-col items-center gap-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Lock size={120} />
+                <span className="mono text-xs uppercase font-black">Locked by Ledger</span>
+              </div>
+            )}
           </div>
         </main>
       </div>
 
       <footer className="mt-8 border-t border-red-900/20 pt-6 text-[9px] mono text-red-950 flex justify-between uppercase font-bold tracking-[0.4em]">
-        <span>Identity Verified: {userEmail}</span>
+        <div className="flex items-center gap-4">
+          <span className="text-red-600 flex items-center gap-2"><ShieldCheck size={12} /> VERIFIED_DOMAIN: OMEGA-UNITY.VERCEL.APP</span>
+          <span>Session: {userEmail}</span>
+        </div>
         <span>Authority: LISWANISO EDGAR MULENGA WARMABLON</span>
       </footer>
+
+      <style>{`
+        @keyframes loading {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
     </div>
   );
 };

@@ -8,6 +8,7 @@ export const editLogo = async (base64Image: string, prompt: string): Promise<str
     throw new Error("ENERGY_VOID: Substrate requires API_KEY to instantiate.");
   }
 
+  // Create instance right before call as per rules
   const ai = new GoogleGenAI({ apiKey: API_KEY });
   
   const match = base64Image.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
@@ -30,11 +31,12 @@ export const editLogo = async (base64Image: string, prompt: string): Promise<str
           },
           {
             text: `ACT AS THE OMEGA ARCHITECT. EXECUTE SOVEREIGN DIRECTIVE: ${prompt}. 
-            CRITICAL SPECIFICATIONS:
-            1. The word "EVOLVE" must be filled with PURE RED (Hex: #FF0000).
-            2. A stylized window structure must be integrated geometrically between the "Evolve" text and the secondary structure.
-            3. The window must also use PURE RED (#FF0000).
-            4. Maintain sharp, high-contrast architectural precision. No gradients on these specific elements; keep them solid and authoritative.`,
+            CRITICAL GEOMETRIC SPECIFICATIONS:
+            1. The word "EVOLVE" must be filled with PURE RADIANT RED (Hex: #FF0000). Ensure the fill is solid and dominant.
+            2. MANDATORY ADDITION: Between the "EVOLVE" text and the surrounding structure, you must draw a distinct, architectural WINDOW.
+            3. The WINDOW must be colored in the same PURE RED (#FF0000).
+            4. The style must be high-contrast, clean, and authoritative. Avoid gradients or shadows; prioritize raw architectural manifestation. 
+            5. Final output must look like a high-end reality blueprint where the color red represents power and evolution.`,
           },
         ],
       },
@@ -52,7 +54,7 @@ export const editLogo = async (base64Image: string, prompt: string): Promise<str
     }
 
     if (!imageUrl) {
-      throw new Error("MANIFESTATION_VOID: Model failed to render the glyph.");
+      throw new Error("MANIFESTATION_VOID: Model failed to render the glyph. Possible censorship or complexity error.");
     }
 
     return imageUrl;
